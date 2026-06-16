@@ -9,192 +9,193 @@ using System.Windows.Media.Media3D;
 using System.Windows.Shapes;
 
 namespace scribblepane {
-   private Polyline? currentLine;
-   private Polyline? selectedLine;
-   private bool isDrawing = false;
-   private bool isDragging = false;
-   private Point lastDragPoint;
-   private Stack<UIElement> undoStack = new ();
-   private Stack<UIElement> redoStack = new ();
+   public partial class MainWindow : Window {
+      private Polyline? currentLine;
+      private Polyline? selectedLine;
+      private bool isDrawing = false;
+      private bool isDragging = false;
+      private Point lastDragPoint;
+      private Stack<UIElement> undoStack = new ();
+      private Stack<UIElement> redoStack = new ();
 
-   // ZOOM + PAN
-   private ScaleTransform scaleTransform = new ();
-   private TranslateTransform translateTransform = new ();
-   private TransformGroup transformGroup = new ();
+      // ZOOM + PAN
+      private ScaleTransform scaleTransform = new ();
+      private TranslateTransform translateTransform = new ();
+      private TransformGroup transformGroup = new ();
 
-   private bool isPanning = false;
-   private Point panStart;
-   private bool spacePressed = false;
+      private bool isPanning = false;
+      private Point panStart;
+      private bool spacePressed = false;
 
-   public MainWindow () {
-      InitializeComponent ();
-      transformGroup.Children.Add (scaleTransform);
-      transformGroup.Children.Add (translateTransform);
-      DrawCanvas.RenderTransform = transformGroup;
-   }
-
-   private void Canvas_MouseDown (object sender, MouseButtonEventArgs e) {
-      Point clickedPoint = e.GetPosition (DrawCanvas);
-      // PAN MODE
-      if (spacePressed) {
-         isPanning = true;
-         panStart = e.GetPosition (this);
-         return;
+      public MainWindow () {
+         InitializeComponent ();
+         transformGroup.Children.Add (scaleTransform);
+         transformGroup.Children.Add (translateTransform);
+         DrawCanvas.RenderTransform = transformGroup;
       }
 
-      // CHECK IF CLICKED ON EXISTING STROKE
-      foreach (UIElement element in DrawCanvas.Children) {
-         if (element is Polyline line) {
-            if (line.IsMouseOver) {
-               SelectLine (line);
-               isDragging = true;
-               lastDragPoint = clickedPoint;
-               return;
+      private void Canvas_MouseDown (object sender, MouseButtonEventArgs e) {
+         Point clickedPoint = e.GetPosition (DrawCanvas);
+         // PAN MODE
+         if (spacePressed) {
+            isPanning = true;
+            panStart = e.GetPosition (this);
+            return;
+         }
+
+         // CHECK IF CLICKED ON EXISTING STROKE
+         foreach (UIElement element in DrawCanvas.Children) {
+            if (element is Polyline line) {
+               if (line.IsMouseOver) {
+                  SelectLine (line);
+                  isDragging = true;
+                  lastDragPoint = clickedPoint;
+                  return;
+               }
             }
          }
+
+         // START DRAWING
+         isDrawing = true;
+         currentLine = new Polyline {
+            Stroke = GetSelectedColor (),
+            StrokeThickness = BrushSlider.Value
+         };
+         currentLine.Points.Add (clickedPoint);
+         DrawCanvas.Children.Add (currentLine);
+         undoStack.Push (currentLine);
+         redoStack.Clear ();
       }
 
-      // START DRAWING
-      isDrawing = true;
-      currentLine = new Polyline {
-         Stroke = GetSelectedColor (),
-         StrokeThickness = BrushSlider.Value
-      };
-      currentLine.Points.Add (clickedPoint);
-      DrawCanvas.Children.Add (currentLine);
-      undoStack.Push (currentLine);
-      redoStack.Clear ();
-   }
-
-   private void Canvas_MouseMove (object sender, MouseEventArgs e) {
-      Point currentPoint = e.GetPosition (DrawCanvas);
-      // PAN
-      if (isPanning) {
-         Point current = e.GetPosition (this);
-         translateTransform.X += current.X - panStart.X;
-         translateTransform.Y += current.Y - panStart.Y;
-         panStart = current;
-         return;
-      }
-
-      // DRAG SELECTED LINE
-      if (isDragging && selectedLine != null) {
-         double dx = currentPoint.X - lastDragPoint.X;
-         double dy = currentPoint.Y - lastDragPoint.Y;
-         for (int i = 0; i < selectedLine.Points.Count; i++) {
-            Point p = selectedLine.Points[i];
-            selectedLine.Points[i] = new Point (p.X + dx, p.Y + dy);
+      private void Canvas_MouseMove (object sender, MouseEventArgs e) {
+         Point currentPoint = e.GetPosition (DrawCanvas);
+         // PAN
+         if (isPanning) {
+            Point current = e.GetPosition (this);
+            translateTransform.X += current.X - panStart.X;
+            translateTransform.Y += current.Y - panStart.Y;
+            panStart = current;
+            return;
          }
-         lastDragPoint = currentPoint;
-         return;
+
+         // DRAG SELECTED LINE
+         if (isDragging && selectedLine != null) {
+            double dx = currentPoint.X - lastDragPoint.X;
+            double dy = currentPoint.Y - lastDragPoint.Y;
+            for (int i = 0; i < selectedLine.Points.Count; i++) {
+               Point p = selectedLine.Points[i];
+               selectedLine.Points[i] = new Point (p.X + dx, p.Y + dy);
+            }
+            lastDragPoint = currentPoint;
+            return;
+         }
+
+         // DRAW
+         if (isDrawing && currentLine != null) {
+            currentLine.Points.Add (currentPoint);
+         }
       }
 
-      // DRAW
-      if (isDrawing && currentLine != null) {
-         currentLine.Points.Add (currentPoint);
+      private void Canvas_MouseUp (object sender, MouseButtonEventArgs e) {
+         isDrawing = false;
+         isDragging = false;
+         isPanning = false;
       }
-   }
 
-   private void Canvas_MouseUp (object sender, MouseButtonEventArgs e) {
-      isDrawing = false;
-      isDragging = false;
-      isPanning = false;
-   }
+      // =========================
+      // SELECT LINE
+      // =========================
 
-   // =========================
-   // SELECT LINE
-   // =========================
-
-   private void SelectLine (Polyline line) {
-      if (selectedLine != null) {
-         selectedLine.StrokeThickness -= 2;
+      private void SelectLine (Polyline line) {
+         if (selectedLine != null) {
+            selectedLine.StrokeThickness -= 2;
+         }
+         selectedLine = line;
+         selectedLine.StrokeThickness += 2;
       }
-      selectedLine = line;
-      selectedLine.StrokeThickness += 2;
-   }
 
-   // =========================
-   // ZOOM
-   // =========================
+      // =========================
+      // ZOOM
+      // =========================
 
-   private void Canvas_MouseWheel (object sender, MouseWheelEventArgs e) {
-      double zoom = e.Delta > 0 ? 1.1 : 0.9;
-      scaleTransform.ScaleX *= zoom;
-      scaleTransform.ScaleY *= zoom;
-   }
-
-   // =========================
-   // KEY EVENTS
-   // =========================
-
-   private void Window_KeyDown (object sender, KeyEventArgs e) {
-      if (e.Key == Key.Space) {
-         spacePressed = true;
+      private void Canvas_MouseWheel (object sender, MouseWheelEventArgs e) {
+         double zoom = e.Delta > 0 ? 1.1 : 0.9;
+         scaleTransform.ScaleX *= zoom;
+         scaleTransform.ScaleY *= zoom;
       }
-   }
 
-   private void Window_KeyUp (object sender, KeyEventArgs e) {
-      if (e.Key == Key.Space) {
-         spacePressed = false;
+      // =========================
+      // KEY EVENTS
+      // =========================
+
+      private void Window_KeyDown (object sender, KeyEventArgs e) {
+         if (e.Key == Key.Space) {
+            spacePressed = true;
+         }
       }
-   }
 
-   // =========================
-   // BUTTONS
-   // =========================
-
-   private void Clear_Click (object sender, RoutedEventArgs e) {
-      DrawCanvas.Children.Clear ();
-      selectedLine = null;
-      undoStack.Clear ();
-      redoStack.Clear ();
-   }
-
-   private void Undo_Click (object sender, RoutedEventArgs e) {
-      if (DrawCanvas.Children.Count > 0) {
-         UIElement last = DrawCanvas.Children[^1];
-         DrawCanvas.Children.Remove (last);
-         redoStack.Push (last);
+      private void Window_KeyUp (object sender, KeyEventArgs e) {
+         if (e.Key == Key.Space) {
+            spacePressed = false;
+         }
       }
-   }
 
-   private void Redo_Click (object sender, RoutedEventArgs e) {
-      if (redoStack.Count > 0) {
-         UIElement item = redoStack.Pop ();
-         DrawCanvas.Children.Add (item);
-      }
-   }
+      // =========================
+      // BUTTONS
+      // =========================
 
-   private void Delete_Click (object sender, RoutedEventArgs e) {
-      if (selectedLine != null) {
-         DrawCanvas.Children.Remove (selectedLine);
+      private void Clear_Click (object sender, RoutedEventArgs e) {
+         DrawCanvas.Children.Clear ();
          selectedLine = null;
+         undoStack.Clear ();
+         redoStack.Clear ();
       }
-   }
 
-   // =========================
-   // COLOR
-   // =========================
+      private void Undo_Click (object sender, RoutedEventArgs e) {
+         if (DrawCanvas.Children.Count > 0) {
+            UIElement last = DrawCanvas.Children[^1];
+            DrawCanvas.Children.Remove (last);
+            redoStack.Push (last);
+         }
+      }
 
-   private SolidColorBrush GetSelectedColor () {
-      var selectedItem = ColorPicker.SelectedItem as ComboBoxItem;
-      string color = selectedItem?.Content.ToString () ?? "Black";
-      return color switch {
-         "Red" => Brushes.Red,
-         "Green" => Brushes.Green,
-         "Blue" => Brushes.Blue,
-         _ => Brushes.Black
-      };
-   }
+      private void Redo_Click (object sender, RoutedEventArgs e) {
+         if (redoStack.Count > 0) {
+            UIElement item = redoStack.Pop ();
+            DrawCanvas.Children.Add (item);
+         }
+      }
 
-   // =========================
-   // SAVE DATA CLASS
-   // ========================= 
+      private void Delete_Click (object sender, RoutedEventArgs e) {
+         if (selectedLine != null) {
+            DrawCanvas.Children.Remove (selectedLine);
+            selectedLine = null;
+         }
+      }
 
-   public class StrokeData {
-      public string? Color { get; set; }
-      public double Thickness { get; set; }
-      public List<Point>? Points { get; set; }
+      // =========================
+      // COLOR
+      // =========================
+
+      private SolidColorBrush GetSelectedColor () {
+         var selectedItem = ColorPicker.SelectedItem as ComboBoxItem;
+         string color = selectedItem?.Content.ToString () ?? "Black";
+         return color switch {
+            "Red" => Brushes.Red,
+            "Green" => Brushes.Green,
+            "Blue" => Brushes.Blue,
+            _ => Brushes.Black
+         };
+      }
+
+      // =========================
+      // SAVE DATA CLASS
+      // ========================= 
+
+      public class StrokeData {
+         public string? Color { get; set; }
+         public double Thickness { get; set; }
+         public List<Point>? Points { get; set; }
       }
 
       // =========================
