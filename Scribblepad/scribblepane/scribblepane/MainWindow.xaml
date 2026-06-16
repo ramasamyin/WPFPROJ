@@ -6,22 +6,80 @@
         xmlns:local="clr-namespace:scribblepane"
         mc:Ignorable="d"
         Title="Scribble Pad" Height="500" Width="800">
-    <DockPanel>
-        <StackPanel Orientation="Horizontal" DockPanel.Dock="Top" Margin="10">
-            <Button Content="Save" Width="80" Margin="10" Click="Save_Click"/>
-            <Button Content="Open" Width="80" Margin="10" Click="Load_Click"/>
-            <Button Content="Clear" Click="Clear_Click" Width="80" Margin="10"/>
-            <TextBlock Text="Brush Size:" VerticalAlignment="Center" Margin="10,10,0,10"/>
-            <Slider Name ="BrushSlider" Minimum="1" Maximum="10" Value="2" Width="120" Margin="2,12,10,10"/>
-            <TextBlock Text="Color:" VerticalAlignment="Center" Margin="10,10,0,10"/>
-            <ComboBox Name="ColorPicker" Width="120" SelectedIndex="0" Margin="10">
+    <DockPanel RenderTransformOrigin="0.717,1.483">
+        <!-- TOOLBAR -->
+        <StackPanel Orientation="Horizontal"
+                DockPanel.Dock="Top"
+                Margin="10">
+
+            <Button Content="Save"
+                Width="80"
+                Margin="5"
+                Click="Save_Click"/>
+
+            <Button Content="Open"
+                Width="80"
+                Margin="5"
+                Click="Load_Click"/>
+
+            <Button Content="Clear"
+                Width="80"
+                Margin="5"
+                Click="Clear_Click"/>
+
+            <Button Content="Undo"
+                Width="80"
+                Margin="5"
+                Click="Undo_Click"/>
+
+            <Button Content="Redo"
+                Width="80"
+                Margin="5"
+                Click="Redo_Click"/>
+
+            <Button Content="Delete Stroke"
+                Width="100"
+                Margin="5"
+                Click="Delete_Click"/>
+
+            <TextBlock Text="Brush Size:"
+                   VerticalAlignment="Center"
+                   Margin="15,0,5,0"/>
+
+            <Slider Name="BrushSlider"
+                Margin="0,7,0,0"
+                Minimum="1"
+                Maximum="10"
+                Value="2"
+                Width="120"/>
+
+            <TextBlock Text="Color:"
+                   VerticalAlignment="Center"
+                   Margin="15,0,5,0"/>
+
+            <ComboBox Name="ColorPicker"
+                  Width="120"
+                  Margin="5"
+                  SelectedIndex="0">
                 <ComboBoxItem Content="Black"/>
                 <ComboBoxItem Content="Red"/>
                 <ComboBoxItem Content="Blue"/>
                 <ComboBoxItem Content="Green"/>
             </ComboBox>
         </StackPanel>
-        <Canvas Name="DrawCanvas" Background="White" ClipToBounds="True" MouseDown="Canvas_MouseDown" MouseMove="Canvas_MouseMove" MouseUp="Canvas_MouseUp"/>
+
+        <!-- DRAWING AREA -->
+        <Border BorderBrush="Gray"
+            BorderThickness="1"
+            Margin="5">
+            <Canvas Name="DrawCanvas"
+                Background="White"
+                ClipToBounds="True"
+                MouseDown="Canvas_MouseDown"
+                MouseMove="Canvas_MouseMove"
+                MouseUp="Canvas_MouseUp"
+                MouseWheel="Canvas_MouseWheel"/>
+        </Border>
     </DockPanel>
 </Window>
 
